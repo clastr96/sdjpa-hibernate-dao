@@ -4,9 +4,9 @@ import guru.springframework.jdbc.domain.Author;
 import guru.springframework.jdbc.domain.Book;
 import org.springframework.stereotype.Component;
 
-import javax.persistence.EntityManager;
-import javax.persistence.EntityManagerFactory;
-import javax.persistence.TypedQuery;
+import javax.persistence.*;
+import javax.persistence.criteria.*;
+import java.util.List;
 
 @Component
 public class BookDaoImpl implements BookDao {
@@ -14,6 +14,61 @@ public class BookDaoImpl implements BookDao {
 
     public BookDaoImpl(EntityManagerFactory emf) {
         this.emf = emf;
+    }
+
+    @Override
+    public Book findBookByTitleCriteria(String title) {
+        EntityManager em = getEntityManager();
+
+        try {
+            CriteriaBuilder criteriaBuilder = em.getCriteriaBuilder();
+            CriteriaQuery<Book> criteriaQuery = criteriaBuilder.createQuery(Book.class);
+
+            Root<Book> root = criteriaQuery.from(Book.class);
+
+            ParameterExpression<String> titleParam = criteriaBuilder.parameter(String.class);
+
+
+            Predicate titlePred = criteriaBuilder.equal(root.get("title"), titleParam);
+
+            criteriaQuery.select(root).where(titlePred);
+
+            TypedQuery<Book> typedQuery = em.createQuery(criteriaQuery);
+            typedQuery.setParameter(titleParam, title);
+
+            return typedQuery.getSingleResult();
+        } finally {
+            em.close();
+        }
+    }
+
+    @Override
+    public List<Book> findAll() {
+        EntityManager em = getEntityManager();
+
+        try {
+            TypedQuery<Book> query = em.createNamedQuery("book_find_all", Book.class);
+            return query.getResultList();
+        } finally {
+            em.close();
+        }
+    }
+
+    @Override
+    public Book findByISBN(String isbn) {
+        EntityManager em = getEntityManager();
+        try {
+            TypedQuery<Book> query = em.createQuery("SELECT b FROM Book b WHERE b.isbn = :isbn", Book.class);
+            query.setParameter("isbn", isbn);
+
+            Book book = query.getSingleResult();
+
+            return book;
+        } finally {
+            em.close();
+        }
+
+
     }
 
     @Override
@@ -28,8 +83,9 @@ public class BookDaoImpl implements BookDao {
     @Override
     public Book findBookByTitle(String title) {
         EntityManager em = getEntityManager();
-        TypedQuery<Book> query = getEntityManager().createQuery("SELECT b from Book b WHERE b.title = " +
-                ":title", Book.class);
+//        TypedQuery<Book> query = getEntityManager().createQuery("SELECT b from Book b WHERE b.title = " +
+//                ":title", Book.class);
+        TypedQuery<Book> query = em.createNamedQuery("find_by_title", Book.class);
         query.setParameter("title", title);
 
         Book book = query.getSingleResult();
